@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -40,11 +41,13 @@ async def upload_resume(file: UploadFile = File(...), db: AsyncSession = Depends
     if not text.strip():
         raise HTTPException(status_code=422, detail="No readable text was found in the document.")
 
+    expires_at = datetime.now(timezone.utc) + timedelta(days=settings.resume_retention_days)
     resume = Resume(
         filename=Path(file.filename or "resume").name,
         content_type=file.content_type,
         extracted_text=text,
         status="processing",
+        expires_at=expires_at,
     )
     db.add(resume)
     await db.commit()
@@ -87,6 +90,7 @@ async def list_resumes(db: AsyncSession = Depends(get_db)):
             "status": row.status,
             "profile": row.profile or {},
             "created_at": row.created_at.isoformat() if row.created_at else None,
+            "expires_at": row.expires_at.isoformat() if row.expires_at else None,
         }
         for row in rows
     ]
@@ -113,4 +117,5 @@ async def get_resume(resume_id: str, db: AsyncSession = Depends(get_db)):
         "profile": row.profile or {},
         "extracted_text": row.extracted_text,
         "created_at": row.created_at.isoformat() if row.created_at else None,
+        "expires_at": row.expires_at.isoformat() if row.expires_at else None,
     }
