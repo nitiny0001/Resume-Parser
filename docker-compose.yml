@@ -38,6 +38,12 @@ services:
       OPENAI_EMBEDDING_MODEL: text-embedding-3-small
     ports:
       - "8000:8000"
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/ready')"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 15s
     depends_on:
       postgres:
         condition: service_healthy
@@ -69,7 +75,7 @@ services:
       - "3000:3000"
     depends_on:
       backend:
-        condition: service_started
+        condition: service_healthy
 
 volumes:
   postgres_data:
