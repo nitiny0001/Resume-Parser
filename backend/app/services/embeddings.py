@@ -2,6 +2,8 @@ import os
 
 from openai import AsyncOpenAI
 
+from app.core.config import settings
+
 
 async def embed_text(text: str) -> list[float]:
     api_key = os.getenv("OPENAI_API_KEY")
@@ -10,7 +12,7 @@ async def embed_text(text: str) -> list[float]:
 
     client = AsyncOpenAI(api_key=api_key)
     response = await client.embeddings.create(
-        model=os.getenv("OPENAI_EMBEDDING_MODEL", "text-embedding-3-small"),
+        model=settings.openai_embedding_model,
         input=text[:8000],
     )
     return response.data[0].embedding
