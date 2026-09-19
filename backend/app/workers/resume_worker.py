@@ -1,4 +1,4 @@
-from arq import create_pool
+from arq import cron
 from arq.connections import RedisSettings
 
 from app.core.config import settings
@@ -35,6 +35,31 @@ async def process_resume(ctx, resume_id: str):
             await db.commit()
 
 
+async def cleanup_expired_resumes(ctx):
+    from datetime import datetime, timezone
+
+    from sqlalchemy import delete
+
+    from app.core.database import SessionLocal
+    from app.models.resume import Resume
+
+    async with SessionLocal() as db:
+        result = await db.execute(
+            delete(Resume).where(Resume.expires_at <= datetime.now(timezone.utc))
+        )
+        await db.commit()
+        return {"deleted": result.rowcount or 0}
+
+
 class WorkerSettings:
     functions = [process_resume]
+    cron_jobs = [
+        cron(
+            cleanup_expired_resumes,
+            hour=3,
+            minute=15,
+            name="cleanup_expired_resumes",
+            unique=True,
+        )
+    ]
     redis_settings = RedisSettings.from_dsn(settings.redis_url)
