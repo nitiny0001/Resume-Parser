@@ -1,7 +1,5 @@
 from pathlib import Path
 
-from arq import create_pool
-from arq.connections import RedisSettings
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,6 +8,8 @@ from app.core.config import settings
 from app.core.database import get_db
 from app.models.resume import Resume
 from app.schemas.resume import UploadResponse
+from app.services.embeddings import embed_text
+from app.services.llm_service import analyze_resume
 from app.services.text_extractor import extract_text
 
 router = APIRouter(prefix="/resumes", tags=["Resumes"])
@@ -44,20 +44,23 @@ async def upload_resume(file: UploadFile = File(...), db: AsyncSession = Depends
         filename=Path(file.filename or "resume").name,
         content_type=file.content_type,
         extracted_text=text,
-        status="queued",
+        status="processing",
     )
     db.add(resume)
     await db.commit()
     await db.refresh(resume)
 
     try:
-        redis = await create_pool(RedisSettings.from_dsn(settings.redis_url))
-        await redis.enqueue_job("process_resume", str(resume.id))
-        await redis.close()
-    except Exception as exc:
-        resume.status = "extracted"
+        profile = await analyze_resume(text)
+        resume.profile = profile.model_dump()
+        vector = await embed_text(text)
+        resume.embedding = vector or None
+        resume.status = "processed"
         await db.commit()
-        raise HTTPException(status_code=503, detail=f"Resume queue is unavailable: {exc}") from exc
+    except Exception as exc:
+        resume.status = "failed"
+        await db.commit()
+        raise HTTPException(status_code=502, detail=f"Resume analysis failed: {exc}") from exc
 
     return UploadResponse(
         id=resume.id,
