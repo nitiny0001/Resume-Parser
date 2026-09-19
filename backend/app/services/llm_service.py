@@ -6,11 +6,25 @@ from app.core.config import settings
 from app.schemas.candidate import CandidateProfile
 
 
-SYSTEM_PROMPT = """You extract structured candidate information from resumes.
-Never invent facts.
+SYSTEM_PROMPT = """You extract a structured candidate profile from a resume.
+Never invent facts. Only use information supported by the resume.
 Every skill must include evidence copied verbatim from the resume.
-Confidence values must be between 0 and 1.
-Return only the requested structured data."""
+Return at most 35 distinct skills and avoid duplicates/synonyms.
+
+Classify every skill into exactly one category:
+- language: programming/query languages such as Python, C, JavaScript, TypeScript, SQL
+- framework: application/UI frameworks such as React, Next.js, FastAPI, Flask, Django, Tailwind CSS
+- library: libraries such as NumPy, Pandas, Matplotlib, scikit-learn
+- database: data stores such as PostgreSQL, MySQL, MongoDB, Redis
+- tool: developer tools such as Git, GitHub, Postman
+- cloud_devops: cloud/platform/container/CI/CD technologies such as AWS, Docker, Kubernetes
+- ai_ml: AI/ML techniques, models and domains such as Machine Learning, Generative AI, NLP
+- core_skill: resume-relevant technical capabilities such as Data Preprocessing, Feature Engineering, Predictive Analytics, Linear Regression, Resume Parsing, Skill-Gap Analysis
+- other: only when none of the above fits
+
+Prefer specific technical technologies over generic words like "programming" or "web development".
+Keep category assignment consistent and do not place the same skill in multiple categories."""
+
 
 RESPONSE_SCHEMA = {
     "type": "object",
@@ -26,6 +40,20 @@ RESPONSE_SCHEMA = {
                 "additionalProperties": False,
                 "properties": {
                     "name": {"type": "string"},
+                    "category": {
+                        "type": "string",
+                        "enum": [
+                            "language",
+                            "framework",
+                            "library",
+                            "database",
+                            "tool",
+                            "cloud_devops",
+                            "ai_ml",
+                            "core_skill",
+                            "other",
+                        ],
+                    },
                     "confidence": {"type": "number", "minimum": 0, "maximum": 1},
                     "evidence": {
                         "type": "array",
@@ -41,18 +69,12 @@ RESPONSE_SCHEMA = {
                         },
                     },
                 },
-                "required": ["name", "confidence", "evidence"],
+                "required": ["name", "category", "confidence", "evidence"],
             },
         },
         "years_of_experience": {"type": ["number", "null"], "minimum": 0},
     },
-    "required": [
-        "name",
-        "headline",
-        "summary",
-        "skills",
-        "years_of_experience",
-    ],
+    "required": ["name", "headline", "summary", "skills", "years_of_experience"],
 }
 
 
@@ -94,11 +116,35 @@ async def analyze_resume(text: str) -> CandidateProfile:
     return CandidateProfile.model_validate(json.loads(response.output_text))
 
 
+def _categorize_skill(name: str) -> str:
+    normalized = name.lower().strip()
+    categories = {
+        "language": {"python", "c", "c++", "java", "javascript", "typescript", "sql"},
+        "framework": {"react", "next.js", "nextjs", "fastapi", "flask", "django", "tailwind css"},
+        "library": {"numpy", "pandas", "matplotlib", "scikit-learn"},
+        "database": {"postgresql", "mysql", "mongodb", "redis"},
+        "tool": {"git", "github", "postman"},
+        "cloud_devops": {"aws", "docker", "kubernetes", "github actions", "ci/cd"},
+        "ai_ml": {"machine learning", "generative ai", "artificial intelligence", "nlp", "deep learning"},
+        "core_skill": {
+            "data preprocessing", "feature engineering", "predictive analytics",
+            "linear regression", "resume parsing", "skill-gap analysis",
+        },
+    }
+    for category, names in categories.items():
+        if normalized in names:
+            return category
+    return "other"
+
+
 def _local_fallback(text: str) -> CandidateProfile:
     known_skills = [
-        "Python", "JavaScript", "TypeScript", "React", "Next.js", "FastAPI",
-        "Django", "Node.js", "PostgreSQL", "MongoDB", "Redis", "Docker",
-        "AWS", "Git", "GitHub", "SQL", "Java", "C++", "Machine Learning",
+        "Python", "C", "Java", "JavaScript", "TypeScript", "SQL", "React", "Next.js",
+        "FastAPI", "Flask", "Django", "Tailwind CSS", "NumPy", "Pandas", "Matplotlib",
+        "scikit-learn", "PostgreSQL", "MySQL", "MongoDB", "Redis", "Docker", "AWS",
+        "Git", "GitHub", "Postman", "Machine Learning", "Generative AI",
+        "Data Preprocessing", "Feature Engineering", "Predictive Analytics",
+        "Linear Regression", "Resume Parsing", "Skill-Gap Analysis",
     ]
     skills = []
 
@@ -112,14 +158,13 @@ def _local_fallback(text: str) -> CandidateProfile:
         skills.append(
             {
                 "name": skill,
+                "category": _categorize_skill(skill),
                 "confidence": 0.7,
-                "evidence": [
-                    {
-                        "source": "resume_text",
-                        "text": evidence,
-                        "confidence": 0.7,
-                    }
-                ],
+                "evidence": [{
+                    "source": "resume_text",
+                    "text": evidence,
+                    "confidence": 0.7,
+                }],
             }
         )
 
