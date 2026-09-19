@@ -174,6 +174,12 @@ Never commit API keys, database passwords, or other secrets.
 | GET | /health | Liveness |
 | GET | /ready | Readiness |
 
+## Data retention
+
+Resumes are retained for a configurable period and then permanently removed by the ARQ worker. The default is **30 days** (`RESUME_RETENTION_DAYS=30`). The cleanup job runs once per day and deletes expired database records, including extracted text, structured profile data, and embeddings.
+
+This retention policy reduces the amount of sensitive resume data kept indefinitely. Authentication and per-user authorization are still required before treating the application as a secure multi-user production system.
+
 ## Reliability
 
 The backend is designed to degrade gracefully around AI quota failures:
