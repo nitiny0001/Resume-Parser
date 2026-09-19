@@ -5,9 +5,53 @@ from app.schemas.candidate import CandidateProfile
 
 
 SYSTEM_PROMPT = """You extract structured candidate information from resumes.
-Return JSON matching the CandidateProfile schema.
-Never invent facts. Every skill must include evidence copied from the resume.
-Confidence must be between 0 and 1."""
+Never invent facts.
+Every skill must include evidence copied verbatim from the resume.
+Confidence values must be between 0 and 1.
+Return only the requested structured data."""
+
+RESPONSE_SCHEMA = {
+    "type": "object",
+    "additionalProperties": False,
+    "properties": {
+        "name": {"type": ["string", "null"]},
+        "headline": {"type": ["string", "null"]},
+        "summary": {"type": ["string", "null"]},
+        "skills": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "additionalProperties": False,
+                "properties": {
+                    "name": {"type": "string"},
+                    "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                    "evidence": {
+                        "type": "array",
+                        "items": {
+                            "type": "object",
+                            "additionalProperties": False,
+                            "properties": {
+                                "source": {"type": "string"},
+                                "text": {"type": "string"},
+                                "confidence": {"type": "number", "minimum": 0, "maximum": 1},
+                            },
+                            "required": ["source", "text", "confidence"],
+                        },
+                    },
+                },
+                "required": ["name", "confidence", "evidence"],
+            },
+        },
+        "years_of_experience": {"type": ["number", "null"], "minimum": 0},
+    },
+    "required": [
+        "name",
+        "headline",
+        "summary",
+        "skills",
+        "years_of_experience",
+    ],
+}
 
 
 async def analyze_resume(text: str) -> CandidateProfile:
@@ -18,16 +62,28 @@ async def analyze_resume(text: str) -> CandidateProfile:
     from openai import AsyncOpenAI
 
     client = AsyncOpenAI(api_key=api_key)
-    response = await client.chat.completions.create(
-        model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
-        response_format={"type": "json_object"},
-        messages=[
-            {"role": "system", "content": SYSTEM_PROMPT},
-            {"role": "user", "content": text[:60000]},
+    response = await client.responses.create(
+        model=os.getenv("OPENAI_MODEL", "gpt-5.6-luna"),
+        input=[
+            {
+                "role": "system",
+                "content": [{"type": "input_text", "text": SYSTEM_PROMPT}],
+            },
+            {
+                "role": "user",
+                "content": [{"type": "input_text", "text": text[:60000]}],
+            },
         ],
+        text={
+            "format": {
+                "type": "json_schema",
+                "name": "candidate_profile",
+                "strict": True,
+                "schema": RESPONSE_SCHEMA,
+            }
+        },
     )
-    raw = response.choices[0].message.content or "{}"
-    return CandidateProfile.model_validate(json.loads(raw))
+    return CandidateProfile.model_validate(json.loads(response.output_text))
 
 
 def _local_fallback(text: str) -> CandidateProfile:
