@@ -1,5 +1,8 @@
 from fastapi import APIRouter, File, HTTPException, UploadFile
 
+from app.schemas.resume import UploadResponse
+from app.services.text_extractor import extract_text
+
 router = APIRouter(prefix="/resumes", tags=["Resumes"])
 
 ALLOWED_TYPES = {
@@ -9,7 +12,7 @@ ALLOWED_TYPES = {
 MAX_FILE_SIZE = 10 * 1024 * 1024
 
 
-@router.post("/upload")
+@router.post("/upload", response_model=UploadResponse)
 async def upload_resume(file: UploadFile = File(...)):
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(status_code=400, detail="Only PDF and DOCX files are supported.")
@@ -18,9 +21,20 @@ async def upload_resume(file: UploadFile = File(...)):
     if len(contents) > MAX_FILE_SIZE:
         raise HTTPException(status_code=400, detail="File must be smaller than 10MB.")
 
-    return {
-        "filename": file.filename,
-        "size": len(contents),
-        "content_type": file.content_type,
-        "status": "uploaded",
-    }
+    try:
+        text, page_count, extraction_method = extract_text(contents, file.content_type)
+    except Exception as exc:
+        raise HTTPException(status_code=422, detail=f"Could not extract resume text: {exc}") from exc
+
+    return UploadResponse(
+        filename=file.filename or "resume",
+        size=len(contents),
+        content_type=file.content_type,
+        status="extracted",
+        extracted={
+            "text": text,
+            "page_count": page_count,
+            "character_count": len(text),
+            "extraction_method": extraction_method,
+        },
+    )
