@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
@@ -63,45 +63,19 @@ const CATEGORY_META: { key: SkillCategory; label: string; description: string }[
 ];
 
 const CATEGORY_MAP: Record<string, SkillCategory> = {
-  python: "language",
-  c: "language",
-  java: "language",
-  "c++": "language",
-  javascript: "language",
-  typescript: "language",
-  sql: "language",
-  react: "framework",
-  "next.js": "framework",
-  nextjs: "framework",
-  fastapi: "framework",
-  flask: "framework",
-  django: "framework",
-  "tailwind css": "framework",
-  numpy: "library",
-  pandas: "library",
-  matplotlib: "library",
-  "scikit-learn": "library",
-  postgresql: "database",
-  mysql: "database",
-  mongodb: "database",
-  redis: "database",
-  docker: "cloud_devops",
-  aws: "cloud_devops",
-  kubernetes: "cloud_devops",
-  git: "tool",
-  github: "tool",
-  postman: "tool",
-  "machine learning": "ai_ml",
-  "generative ai": "ai_ml",
-  "artificial intelligence": "ai_ml",
-  nlp: "ai_ml",
-  "deep learning": "ai_ml",
-  "data preprocessing": "core_skill",
-  "feature engineering": "core_skill",
-  "predictive analytics": "core_skill",
-  "linear regression": "core_skill",
-  "resume parsing": "core_skill",
-  "skill-gap analysis": "core_skill",
+  python: "language", c: "language", java: "language", "c++": "language",
+  javascript: "language", typescript: "language", sql: "language",
+  react: "framework", "next.js": "framework", nextjs: "framework",
+  fastapi: "framework", flask: "framework", django: "framework", "tailwind css": "framework",
+  numpy: "library", pandas: "library", matplotlib: "library", "scikit-learn": "library",
+  postgresql: "database", mysql: "database", mongodb: "database", redis: "database",
+  docker: "cloud_devops", aws: "cloud_devops", kubernetes: "cloud_devops",
+  git: "tool", github: "tool", postman: "tool",
+  "machine learning": "ai_ml", "generative ai": "ai_ml", "artificial intelligence": "ai_ml",
+  nlp: "ai_ml", "deep learning": "ai_ml",
+  "data preprocessing": "core_skill", "feature engineering": "core_skill",
+  "predictive analytics": "core_skill", "linear regression": "core_skill",
+  "resume parsing": "core_skill", "skill-gap analysis": "core_skill",
 };
 
 function getCategory(skill: Skill): SkillCategory {
@@ -126,9 +100,7 @@ export default function ResumePage() {
 
     async function loadResume() {
       try {
-        const response = await fetch(API_URL + "/api/resumes/" + params.id, {
-          cache: "no-store",
-        });
+        const response = await fetch(API_URL + "/api/resumes/" + params.id, { cache: "no-store" });
         const data = await response.json();
 
         if (!response.ok) {
@@ -171,34 +143,25 @@ export default function ResumePage() {
   }
 
   if (!resume) {
-    return (
-      <main className="min-h-screen bg-black p-10 text-zinc-400">
-        Loading resume...
-      </main>
-    );
+    return <main className="min-h-screen bg-black p-10 text-zinc-400">Loading resume...</main>;
   }
 
   const profile = resume.profile ?? {};
   const skills = profile.skills ?? [];
   const active = ACTIVE_STATUSES.has(resume.status);
+  const groupedSkills = new Map<SkillCategory, Skill[]>();
 
-  const groupedSkills = useMemo(() => {
-    const groups = new Map<SkillCategory, Skill[]>();
-    for (const skill of skills) {
-      const category = getCategory(skill);
-      const current = groups.get(category) ?? [];
-      current.push(skill);
-      groups.set(category, current);
-    }
-    return groups;
-  }, [skills]);
+  for (const skill of skills) {
+    const category = getCategory(skill);
+    const current = groupedSkills.get(category) ?? [];
+    current.push(skill);
+    groupedSkills.set(category, current);
+  }
 
   return (
     <main className="min-h-screen bg-black px-6 py-14 text-white">
       <div className="mx-auto max-w-6xl">
-        <Link href="/dashboard" className="text-sm text-zinc-500 hover:text-white">
-          ← Dashboard
-        </Link>
+        <Link href="/dashboard" className="text-sm text-zinc-500 hover:text-white">← Dashboard</Link>
 
         <div className="mt-8 flex flex-col justify-between gap-5 md:flex-row md:items-end">
           <div>
@@ -210,12 +173,8 @@ export default function ResumePage() {
                 <span className="text-sm text-zinc-500">{formatExperience(profile.years_of_experience)}</span>
               )}
             </div>
-            <h1 className="mt-4 text-4xl font-bold tracking-tight">
-              {profile.name || resume.filename}
-            </h1>
-            <p className="mt-2 max-w-3xl text-zinc-500">
-              {profile.headline || resume.filename}
-            </p>
+            <h1 className="mt-4 text-4xl font-bold tracking-tight">{profile.name || resume.filename}</h1>
+            <p className="mt-2 max-w-3xl text-zinc-500">{profile.headline || resume.filename}</p>
           </div>
 
           {active && (
@@ -227,24 +186,21 @@ export default function ResumePage() {
 
         <div className="mt-10 grid gap-6 lg:grid-cols-[1.35fr_0.65fr]">
           <section className="rounded-3xl border border-zinc-800 bg-zinc-950 p-7">
-            <div>
-              <h2 className="text-lg font-semibold">Candidate profile</h2>
-              {profile.summary ? (
-                <p className="mt-5 text-[15px] leading-7 text-zinc-300">{profile.summary}</p>
-              ) : (
-                <p className="mt-5 text-sm text-zinc-600">
-                  {active ? "Waiting for structured profile extraction..." : "No summary was extracted."}
-                </p>
-              )}
-            </div>
+            <h2 className="text-lg font-semibold">Candidate profile</h2>
+
+            {profile.summary ? (
+              <p className="mt-5 text-[15px] leading-7 text-zinc-300">{profile.summary}</p>
+            ) : (
+              <p className="mt-5 text-sm text-zinc-600">
+                {active ? "Waiting for structured profile extraction..." : "No summary was extracted."}
+              </p>
+            )}
 
             <div className="mt-10">
               <div className="flex flex-wrap items-end justify-between gap-3">
                 <div>
                   <h3 className="font-medium">Technical profile</h3>
-                  <p className="mt-1 text-sm text-zinc-600">
-                    Technologies are grouped by how they are used, with evidence preserved.
-                  </p>
+                  <p className="mt-1 text-sm text-zinc-600">Technologies are grouped by how they are used, with evidence preserved.</p>
                 </div>
                 <span className="text-xs text-zinc-600">{skills.length} skills indexed</span>
               </div>
@@ -275,9 +231,7 @@ export default function ResumePage() {
                               <summary className="cursor-pointer list-none">
                                 <div className="flex items-center justify-between gap-3">
                                   <span className="font-medium text-zinc-200">{skill.name}</span>
-                                  <span className="text-xs text-zinc-600">
-                                    {(skill.confidence * 100).toFixed(0)}%
-                                  </span>
+                                  <span className="text-xs text-zinc-600">{(skill.confidence * 100).toFixed(0)}%</span>
                                 </div>
                                 <div className="mt-3 h-1.5 overflow-hidden rounded-full bg-zinc-900">
                                   <div
@@ -290,12 +244,8 @@ export default function ResumePage() {
                               <div className="mt-4 space-y-2 border-t border-zinc-900 pt-4">
                                 {skill.evidence.map((evidence, index) => (
                                   <div key={skill.name + "-" + index} className="rounded-xl bg-zinc-950 p-3">
-                                    <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-600">
-                                      {evidence.source}
-                                    </p>
-                                    <p className="mt-2 text-sm leading-6 text-zinc-400">
-                                      “{evidence.text}”
-                                    </p>
+                                    <p className="text-[10px] uppercase tracking-[0.16em] text-zinc-600">{evidence.source}</p>
+                                    <p className="mt-2 text-sm leading-6 text-zinc-400">“{evidence.text}”</p>
                                   </div>
                                 ))}
                               </div>
@@ -328,17 +278,13 @@ export default function ResumePage() {
                 <h2 className="mt-3 break-words font-semibold">{resume.filename}</h2>
                 <p className="mt-2 text-sm text-zinc-500">{resume.content_type}</p>
                 {resume.created_at && (
-                  <p className="mt-5 text-xs text-zinc-600">
-                    Uploaded {new Date(resume.created_at).toLocaleString()}
-                  </p>
+                  <p className="mt-5 text-xs text-zinc-600">Uploaded {new Date(resume.created_at).toLocaleString()}</p>
                 )}
               </div>
             </section>
 
             <details className="rounded-3xl border border-zinc-800 bg-zinc-950 p-7">
-              <summary className="cursor-pointer text-sm font-medium text-zinc-300">
-                View extracted text
-              </summary>
+              <summary className="cursor-pointer text-sm font-medium text-zinc-300">View extracted text</summary>
               <pre className="mt-5 max-h-[35rem] overflow-auto whitespace-pre-wrap text-xs leading-6 text-zinc-500">
                 {resume.extracted_text || "No extracted text available."}
               </pre>
