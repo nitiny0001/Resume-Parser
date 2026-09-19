@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from arq import create_pool
 from arq.connections import RedisSettings
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
@@ -15,7 +17,6 @@ ALLOWED_TYPES = {
     "application/pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
 }
-MAX_FILE_SIZE = 10 * 1024 * 1024
 
 
 @router.post("/upload", response_model=UploadResponse)
@@ -23,9 +24,13 @@ async def upload_resume(file: UploadFile = File(...), db: AsyncSession = Depends
     if file.content_type not in ALLOWED_TYPES:
         raise HTTPException(status_code=400, detail="Only PDF and DOCX files are supported.")
 
-    contents = await file.read()
-    if len(contents) > MAX_FILE_SIZE:
-        raise HTTPException(status_code=400, detail="File must be smaller than 10MB.")
+    max_size = settings.max_upload_size_bytes
+    contents = await file.read(max_size + 1)
+    if len(contents) > max_size:
+        raise HTTPException(
+            status_code=413,
+            detail=f"File must be smaller than {settings.max_upload_size_mb}MB.",
+        )
 
     try:
         text, page_count, extraction_method = extract_text(contents, file.content_type)
@@ -36,7 +41,7 @@ async def upload_resume(file: UploadFile = File(...), db: AsyncSession = Depends
         raise HTTPException(status_code=422, detail="No readable text was found in the document.")
 
     resume = Resume(
-        filename=file.filename or "resume",
+        filename=Path(file.filename or "resume").name,
         content_type=file.content_type,
         extracted_text=text,
         status="queued",
