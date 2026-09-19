@@ -20,6 +20,14 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async rewrites() {
+    return [
+      {
+        source: "/api/:path*",
+        destination: "https://api-prod-production-20e2.up.railway.app/api/:path*",
+      },
+    ];
+  },
 };
 
 export default nextConfig;
