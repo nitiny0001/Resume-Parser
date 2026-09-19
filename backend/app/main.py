@@ -1,10 +1,10 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api.routes.health import router as health_router
 from app.api.routes.analyze import router as analyze_router
-from app.api.routes.search import router as search_router
+from app.api.routes.health import router as health_router
 from app.api.routes.resumes import router as resume_router
+from app.api.routes.search import router as search_router
 
 app = FastAPI(
     title="Resume Intelligence Platform API",
