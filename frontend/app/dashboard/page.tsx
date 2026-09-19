@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 type Resume = {
   id: string;
@@ -18,7 +18,7 @@ export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch(`${API_URL}/api/resumes`)
+    fetch(API_URL + "/api/resumes")
       .then((response) => response.json())
       .then(setResumes)
       .catch(() => setResumes([]))
@@ -77,7 +77,7 @@ export default function DashboardPage() {
           ) : (
             <div className="divide-y divide-zinc-900">
               {resumes.slice(0, 10).map((resume) => (
-                <Link key={resume.id} href={`/resumes/${resume.id}`} className="flex items-center justify-between gap-4 px-6 py-5 hover:bg-zinc-900/60">
+                <Link key={resume.id} href={"/resumes/" + resume.id} className="flex items-center justify-between gap-4 px-6 py-5 hover:bg-zinc-900/60">
                   <div className="min-w-0">
                     <p className="truncate font-medium">{resume.profile.name || resume.filename}</p>
                     <p className="mt-1 truncate text-sm text-zinc-500">{resume.filename}</p>
