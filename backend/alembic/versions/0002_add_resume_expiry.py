@@ -5,6 +5,7 @@ Revises: 0001
 """
 
 from alembic import op
+from sqlalchemy import Column, DateTime
 
 revision = "0002"
 down_revision = "0001"
@@ -13,7 +14,7 @@ depends_on = None
 
 
 def upgrade() -> None:
-    op.add_column("resumes", op.Column("expires_at", op.DateTime(timezone=True), nullable=True))
+    op.add_column("resumes", Column("expires_at", DateTime(timezone=True), nullable=True))
     op.execute(
         """
         UPDATE resumes
