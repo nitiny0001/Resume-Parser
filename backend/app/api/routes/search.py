@@ -22,12 +22,12 @@ async def search_candidates(request: SearchRequest, db: AsyncSession = Depends(g
 
     distance = Resume.embedding.cosine_distance(vector)
     statement = (
-        select(Resume)
+        select(Resume, distance.label("distance"))
         .where(Resume.embedding.is_not(None), Resume.status == "processed")
         .order_by(distance)
         .limit(20)
     )
-    rows = (await db.execute(statement)).scalars().all()
+    rows = (await db.execute(statement)).all()
 
     return {
         "query": request.query,
@@ -38,10 +38,7 @@ async def search_candidates(request: SearchRequest, db: AsyncSession = Depends(g
                 "profile": row.profile or {},
                 "similarity": round(max(0.0, 1.0 - float(distance_value)), 4),
             }
-            for row, distance_value in (
-                (row, await db.scalar(select(Resume.embedding.cosine_distance(vector)).where(Resume.id == row.id)))
-                for row in rows
-            )
+            for row, distance_value in rows
         ],
         "status": "ok",
     }
