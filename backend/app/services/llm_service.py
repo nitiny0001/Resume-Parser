@@ -1,6 +1,7 @@
 import json
 import os
 
+from app.core.config import settings
 from app.schemas.candidate import CandidateProfile
 
 
@@ -63,7 +64,7 @@ async def analyze_resume(text: str) -> CandidateProfile:
 
     client = AsyncOpenAI(api_key=api_key)
     response = await client.responses.create(
-        model=os.getenv("OPENAI_MODEL", "gpt-5.6-luna"),
+        model=settings.openai_model,
         input=[
             {
                 "role": "system",
