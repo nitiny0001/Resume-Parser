@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     openai_embedding_model: str = "text-embedding-3-small"
     cors_origins: str = "http://localhost:3000"
     max_upload_size_mb: int = 10
+    resume_retention_days: int = 30
 
     model_config = SettingsConfigDict(
         env_file=".env",
