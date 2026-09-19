@@ -16,9 +16,13 @@ target_metadata = Base.metadata
 _ = Resume
 
 
+def sync_database_url() -> str:
+    return settings.database_url.replace("+asyncpg", "+psycopg")
+
+
 def run_migrations_offline() -> None:
     context.configure(
-        url=settings.database_url.replace("+asyncpg", ""),
+        url=sync_database_url(),
         target_metadata=target_metadata,
         literal_binds=True,
         dialect_opts={"paramstyle": "named"},
@@ -29,7 +33,7 @@ def run_migrations_offline() -> None:
 
 def run_migrations_online() -> None:
     configuration = config.get_section(config.config_ini_section, {})
-    configuration["sqlalchemy.url"] = settings.database_url.replace("+asyncpg", "")
+    configuration["sqlalchemy.url"] = sync_database_url()
     connectable = engine_from_config(
         configuration,
         prefix="sqlalchemy.",
