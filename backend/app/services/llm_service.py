@@ -61,30 +61,36 @@ async def analyze_resume(text: str) -> CandidateProfile:
     if not api_key:
         return _local_fallback(text)
 
-    from openai import AsyncOpenAI
+    from openai import AsyncOpenAI, RateLimitError
 
     client = AsyncOpenAI(api_key=api_key)
-    response = await client.responses.create(
-        model=settings.openai_model,
-        input=[
-            {
-                "role": "system",
-                "content": [{"type": "input_text", "text": SYSTEM_PROMPT}],
+    try:
+        response = await client.responses.create(
+            model=settings.openai_model,
+            input=[
+                {
+                    "role": "system",
+                    "content": [{"type": "input_text", "text": SYSTEM_PROMPT}],
+                },
+                {
+                    "role": "user",
+                    "content": [{"type": "input_text", "text": text[:60000]}],
+                },
+            ],
+            text={
+                "format": {
+                    "type": "json_schema",
+                    "name": "candidate_profile",
+                    "strict": True,
+                    "schema": RESPONSE_SCHEMA,
+                }
             },
-            {
-                "role": "user",
-                "content": [{"type": "input_text", "text": text[:60000]}],
-            },
-        ],
-        text={
-            "format": {
-                "type": "json_schema",
-                "name": "candidate_profile",
-                "strict": True,
-                "schema": RESPONSE_SCHEMA,
-            }
-        },
-    )
+        )
+    except RateLimitError as exc:
+        if getattr(exc, "status_code", None) == 429:
+            return _local_fallback(text)
+        raise
+
     return CandidateProfile.model_validate(json.loads(response.output_text))
 
 
@@ -118,4 +124,8 @@ def _local_fallback(text: str) -> CandidateProfile:
         )
 
     first_line = next((line.strip() for line in text.splitlines() if line.strip()), None)
-    return CandidateProfile(name=first_line, skills=skills)
+    return CandidateProfile(
+        name=first_line,
+        summary="AI enrichment unavailable; extracted locally from the resume text.",
+        skills=skills,
+    )
