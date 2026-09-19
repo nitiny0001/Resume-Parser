@@ -1,4 +1,19 @@
+from typing import Literal
+
 from pydantic import BaseModel, Field
+
+
+SkillCategory = Literal[
+    "language",
+    "framework",
+    "library",
+    "database",
+    "tool",
+    "cloud_devops",
+    "ai_ml",
+    "core_skill",
+    "other",
+]
 
 
 class Evidence(BaseModel):
@@ -9,6 +24,7 @@ class Evidence(BaseModel):
 
 class Skill(BaseModel):
     name: str
+    category: SkillCategory = "other"
     confidence: float = Field(ge=0, le=1)
     evidence: list[Evidence] = Field(default_factory=list)
 
