@@ -1,5 +1,6 @@
 import json
 import os
+import re
 
 from app.core.config import settings
 from app.schemas.candidate import CandidateProfile
@@ -94,20 +95,27 @@ def _local_fallback(text: str) -> CandidateProfile:
         "AWS", "Git", "GitHub", "SQL", "Java", "C++", "Machine Learning",
     ]
     skills = []
-    lowered = text.lower()
+
     for skill in known_skills:
-        if skill.lower() in lowered:
-            start = lowered.find(skill.lower())
-            evidence = text[max(0, start - 80): start + 160].strip()
-            skills.append({
+        match = re.search(r"(?<!\w)" + re.escape(skill) + r"(?!\w)", text, flags=re.IGNORECASE)
+        if not match:
+            continue
+
+        start = match.start()
+        evidence = text[max(0, start - 80): match.end() + 160].strip()
+        skills.append(
+            {
                 "name": skill,
                 "confidence": 0.7,
-                "evidence": [{
-                    "source": "resume_text",
-                    "text": evidence,
-                    "confidence": 0.7,
-                }],
-            })
+                "evidence": [
+                    {
+                        "source": "resume_text",
+                        "text": evidence,
+                        "confidence": 0.7,
+                    }
+                ],
+            }
+        )
 
     first_line = next((line.strip() for line in text.splitlines() if line.strip()), None)
     return CandidateProfile(name=first_line, skills=skills)
