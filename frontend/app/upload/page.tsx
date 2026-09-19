@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "";
 
 export default function UploadPage() {
   const router = useRouter();
@@ -19,10 +19,10 @@ export default function UploadPage() {
     try {
       const form = new FormData();
       form.append("file", file);
-      const response = await fetch(`${API_URL}/api/resumes/upload`, { method: "POST", body: form });
+      const response = await fetch(API_URL + "/api/resumes/upload", { method: "POST", body: form });
       const data = await response.json();
       if (!response.ok) throw new Error(data.detail ?? "Upload failed");
-      router.push(`/resumes/${data.id}`);
+      router.push("/resumes/" + data.id);
     } catch (error) {
       setMessage(error instanceof Error ? error.message : "Upload failed.");
       setLoading(false);
