@@ -1,5 +1,3 @@
-import uuid
-
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -32,7 +30,6 @@ async def upload_resume(file: UploadFile = File(...), db: AsyncSession = Depends
         raise HTTPException(status_code=422, detail=f"Could not extract resume text: {exc}") from exc
 
     resume = Resume(
-        id=uuid.uuid4(),
         filename=file.filename or "resume",
         content_type=file.content_type,
         extracted_text=text,
@@ -40,8 +37,10 @@ async def upload_resume(file: UploadFile = File(...), db: AsyncSession = Depends
     )
     db.add(resume)
     await db.commit()
+    await db.refresh(resume)
 
     return UploadResponse(
+        id=resume.id,
         filename=resume.filename,
         size=len(contents),
         content_type=file.content_type,
